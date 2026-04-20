@@ -105,7 +105,7 @@ export default function ClimateFork({ value, onChange }: Props) {
         <p className="text-theme-faint text-xs font-mono tracking-[0.28em] uppercase mb-2">Neighbourhood stress fork</p>
         <h3 className="text-lg font-semibold text-theme-primary">Tell us how your block actually runs</h3>
         <p className="text-theme-muted text-sm mt-1">
-          Generic dashboards assume everyone is average. Fork your profile so the simulator and AI plan match your reality.
+          Generic dashboards assume everyone is average. Fork your profile so the simulator and weekly plan match your reality.
         </p>
       </div>
       <div className="flex flex-col gap-7">

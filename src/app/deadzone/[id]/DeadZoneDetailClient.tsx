@@ -233,7 +233,7 @@ export default function DeadZoneDetailClient({ zone }: { zone: DeadZone }) {
             {ORBIT_SIGNAL[zone.category]} This page pairs two NASA Earth-observation–style frames so you can scrub
             between <span className="text-theme-primary tabular-nums">{zone.beforeYear}</span> and{" "}
             <span className="text-theme-primary tabular-nums">{zone.afterYear}</span> while reading the culprit line and
-            generated story below.
+            the story below.
           </p>
           {zone.id.startsWith("cw-") && (
             <p className="mt-4 text-theme-faint text-xs font-mono leading-relaxed max-w-prose border-t border-theme-border pt-4">

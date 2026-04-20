@@ -17,7 +17,8 @@ const themeInitScript = `
 
 export const metadata: Metadata = {
   title: "EarthPulse — Your Planet, Your Responsibility",
-  description: "See how your small actions can heal the planet.",
+  description:
+    "Before-and-after views of stressed places — climate, industry, conflict — so we remember what we have done to our surroundings.",
 };
 
 export default function RootLayout({

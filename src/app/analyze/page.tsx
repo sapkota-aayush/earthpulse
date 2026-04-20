@@ -464,7 +464,7 @@ function AnalyzeContent() {
           <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-3 px-5 py-4 hover:bg-[color-mix(in_oklab,var(--surface-1)_35%,transparent)] transition-colors [&::-webkit-details-marker]:hidden">
             <div>
               <p className="text-theme-faint text-[10px] font-mono tracking-[0.22em] uppercase mb-0.5">Take action</p>
-              <span className="text-theme-primary text-sm font-semibold">Impact list & 7-day AI plan</span>
+              <span className="text-theme-primary text-sm font-semibold">Impact list & 7-day plan</span>
             </div>
             <svg className="w-4 h-4 text-theme-faint shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M6 9l6 6 6-6" />
@@ -490,7 +490,7 @@ function AnalyzeContent() {
             >
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <p className="text-theme-faint text-xs font-mono tracking-widest uppercase mb-1">AI Climate Copilot</p>
+                  <p className="text-theme-faint text-xs font-mono tracking-widest uppercase mb-1">Weekly climate plan</p>
                   <h3 className="text-theme-primary text-lg font-semibold">7-day action plan for {shortName}</h3>
                 </div>
                 {aiPlan?.source && (
@@ -501,7 +501,7 @@ function AnalyzeContent() {
               </div>
 
               {!aiPlan && (
-                <p className="text-theme-muted text-sm">Generating localized plan...</p>
+                <p className="text-theme-muted text-sm">Drafting your localized plan…</p>
               )}
 
               {aiPlan && (
