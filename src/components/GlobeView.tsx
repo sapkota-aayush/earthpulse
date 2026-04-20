@@ -5,8 +5,6 @@ import type { DeadZone } from "@/lib/deadZones";
 
 interface Props {
   onReady?: () => void;
-  /** Fires when user clicks the globe surface (lat/lng in degrees). */
-  onPick?: (lat: number, lng: number) => void;
   deadZones?: DeadZone[];
   onDeadZoneClick?: (zone: DeadZone) => void;
   /** When set, only this dead-zone marker (and its ring) stays visible — others hide until cleared. */
@@ -110,6 +108,10 @@ const ORBITS = [
   { tiltDeg: 98.0,  speed:  0.0023, radius: 126, phase: 0.9  },
   { tiltDeg: -42.0, speed: -0.0019, radius: 140, phase: 2.5  },
 ];
+
+/** Esri World Imagery — reliable CORS + stable for WebGL tile fetches (OSM often blocks non-browser / hotlink patterns → white globe). */
+const EARTH_TILE_URL = (x: number, y: number, z: number) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
 
 function buildRealisticSatellite(THREE: typeof import("three")) {
   const root = new THREE.Group();
@@ -296,12 +298,10 @@ function buildFollowLeadSatellite(THREE: typeof import("three")): FollowLeadStat
 /** Single smooth camera tween duration (ms) — matches globe.gl Cubic.InOut tween. */
 const FLY_TO_DIVE_MS = 6200;
 
-const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, onDeadZoneClick, deadZoneFocusId }, ref) => {
+const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, deadZones, onDeadZoneClick, deadZoneFocusId }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globeInstanceRef = useRef<any>(null);
-  const onPickRef = useRef(onPick);
-  onPickRef.current = onPick;
   const onDeadZoneClickRef = useRef(onDeadZoneClick);
   onDeadZoneClickRef.current = onDeadZoneClick;
   const deadZonesRef = useRef(deadZones);
@@ -435,14 +435,13 @@ const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, 
       const createGlobe = mod.default as unknown as () => (el: HTMLElement) => any;
 
       const globe = createGlobe()(containerRef.current)
-        .globeImageUrl(null as unknown as string)
+        // Base map so the sphere is never solid white if tile requests are slow or fail.
+        .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
         .bumpImageUrl(null as unknown as string)
-        .globeTileEngineUrl((x: number, y: number, z: number) =>
-          `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
-        )
+        .globeTileEngineUrl(EARTH_TILE_URL)
         .globeTileEngineMaxLevel(18)
-        .globeCurvatureResolution(2)
-        .atmosphereAltitude(0.26)
+        .globeCurvatureResolution(1)
+        .atmosphereAltitude(0.12)
         .width(containerRef.current.clientWidth)
         .height(containerRef.current.clientHeight)
         .backgroundColor("rgba(0,0,0,0)")
@@ -453,7 +452,10 @@ const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, 
 
       const renderer = globe.renderer?.();
       if (renderer?.setPixelRatio) {
-        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        renderer.setPixelRatio(Math.min(3, window.devicePixelRatio || 1));
+      }
+      if (renderer) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
       }
 
       applyGlobeAccent(globe);
@@ -471,7 +473,7 @@ const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, 
       ctr.enableZoom = true;
       ctr.enableRotate = true;
       ctr.enablePan = false;
-      ctr.minDistance = 101.2;
+      ctr.minDistance = 100.35;
       ctr.maxDistance = 520;
       ctr.enableDamping = true;
       ctr.dampingFactor = 0.055;
@@ -533,18 +535,8 @@ const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, 
           }
           if (closest && minKm < 520) {
             onDeadZoneClickRef.current?.(closest);
-            return;
           }
         }
-        onPickRef.current?.(coords.lat, coords.lng);
-        const ring = { lat: coords.lat, lng: coords.lng, __rid: Math.random() };
-        const prev = globe.ringsData() as Array<{ lat: number; lng: number; __rid: number }> | undefined;
-        globe.ringsData([...(prev ?? []), ring]);
-        const rid = ring.__rid;
-        window.setTimeout(() => {
-          const cur = globe.ringsData() as Array<{ __rid?: number }> | undefined;
-          globe.ringsData((cur ?? []).filter((r) => r.__rid !== rid));
-        }, 2100);
       });
 
       if (deadZones && deadZones.length > 0) {
@@ -621,7 +613,7 @@ const GlobeView = forwardRef<GlobeHandle, Props>(({ onReady, onPick, deadZones, 
       g.height(containerRef.current.clientHeight);
       const renderer = g.renderer?.();
       if (renderer?.setPixelRatio) {
-        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        renderer.setPixelRatio(Math.min(3, window.devicePixelRatio || 1));
       }
     };
     window.addEventListener("resize", handleResize);

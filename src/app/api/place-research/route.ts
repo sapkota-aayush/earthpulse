@@ -10,10 +10,14 @@ type Body = {
   greenCover?: number;
   population?: number;
   concretePercent?: number;
+  contextThreadId?: string;
 };
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
 const OPENAI_RESEARCH_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o";
+const BACKBOARD_BASE_URL = "https://app.backboard.io/api";
+const BACKBOARD_PLACE_ASSISTANT_ID = process.env.BACKBOARD_PLACE_ASSISTANT_ID?.trim();
+let backboardAssistantCache: string | null = null;
 
 function parseJsonFromText(text: string): Record<string, unknown> | null {
   const t = text.trim();
@@ -79,7 +83,11 @@ function extractUrlCitations(data: unknown): NewsSnip[] {
   return acc;
 }
 
-function coercePayload(parsed: Record<string, unknown>, source: "openai" | "gemini"): PlaceResearchPayload | null {
+function coercePayload(
+  parsed: Record<string, unknown>,
+  source: "backboard" | "openai" | "gemini",
+  contextThreadId?: string
+): PlaceResearchPayload | null {
   const shortTerm = Array.isArray(parsed.shortTerm) ? parsed.shortTerm.map(String).filter(Boolean).slice(0, 3) : [];
   const longTerm = Array.isArray(parsed.longTerm) ? parsed.longTerm.map(String).filter(Boolean).slice(0, 3) : [];
   const products = Array.isArray(parsed.productIdeas)
@@ -116,8 +124,158 @@ function coercePayload(parsed: Record<string, unknown>, source: "openai" | "gemi
     productIdeas: products,
     foundations,
     disclaimer: String(parsed.disclaimer ?? ""),
+    ...(contextThreadId ? { contextThreadId } : {}),
     ...(newsSnippets?.length ? { newsSnippets } : {}),
   };
+}
+
+type BackboardHeaders = {
+  "Content-Type": string;
+  "X-API-Key": string;
+};
+
+function buildBackboardHeaders(apiKey: string, contentType = "application/json"): BackboardHeaders {
+  return {
+    "Content-Type": contentType,
+    "X-API-Key": apiKey,
+  };
+}
+
+async function ensureBackboardAssistantId(apiKey: string): Promise<string | null> {
+  if (BACKBOARD_PLACE_ASSISTANT_ID) return BACKBOARD_PLACE_ASSISTANT_ID;
+  if (backboardAssistantCache) return backboardAssistantCache;
+
+  try {
+    const res = await fetch(`${BACKBOARD_BASE_URL}/assistants`, {
+      method: "POST",
+      headers: buildBackboardHeaders(apiKey),
+      body: JSON.stringify({
+        name: "EarthPulse Place Research",
+        system_prompt:
+          "You are EarthPulse's persistent local climate research assistant. Respond in concise US English. Return strict JSON when requested.",
+      }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { assistant_id?: string };
+    const id = typeof data.assistant_id === "string" ? data.assistant_id : null;
+    if (!id) return null;
+    backboardAssistantCache = id;
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+function extractBackboardText(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const top = data as { content?: unknown; messages?: unknown };
+  if (typeof top.content === "string" && top.content.trim()) return top.content;
+  if (Array.isArray(top.messages)) {
+    for (const m of top.messages) {
+      if (!m || typeof m !== "object") continue;
+      const msg = m as { role?: unknown; content?: unknown };
+      if (msg.role === "assistant" && typeof msg.content === "string" && msg.content.trim()) return msg.content;
+    }
+  }
+  return null;
+}
+
+function extractBackboardNewsSnippets(text: string): NewsSnip[] {
+  const urls = Array.from(text.matchAll(/https?:\/\/[^\s)"\]}>,]+/g)).map((m) => m[0]);
+  const seen = new Set<string>();
+  const out: NewsSnip[] = [];
+  for (const u of urls) {
+    if (seen.has(u)) continue;
+    seen.add(u);
+    let title = "Source";
+    try {
+      const host = new URL(u).hostname.replace(/^www\./, "");
+      title = host;
+    } catch {
+      title = "Source";
+    }
+    out.push({ title, url: u });
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+async function createBackboardThread(apiKey: string, assistantId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${BACKBOARD_BASE_URL}/assistants/${assistantId}/threads`, {
+      method: "POST",
+      headers: buildBackboardHeaders(apiKey),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { thread_id?: string };
+    return typeof data.thread_id === "string" ? data.thread_id : null;
+  } catch {
+    return null;
+  }
+}
+
+async function tryBackboardResearch(body: Body): Promise<PlaceResearchPayload | null> {
+  const apiKey = process.env.BACKBOARD_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const assistantId = await ensureBackboardAssistantId(apiKey);
+  if (!assistantId) return null;
+
+  const threadId = body.contextThreadId?.trim() || (await createBackboardThread(apiKey, assistantId));
+  if (!threadId) return null;
+
+  const place = body.name ?? "Unknown place";
+  const metrics = `Known local signals: health score ${body.score ?? "n/a"}/100, AQI ${body.aqiLabel ?? "n/a"}, green cover ${body.greenCover ?? "n/a"}%, concrete ${body.concretePercent ?? "n/a"}%, population ${body.population ?? "n/a"}, coordinates lat ${body.lat ?? "?"}, lon ${body.lon ?? "?"}.`;
+  const prompt = `EarthPulse place research request for: ${place}. ${metrics}
+
+Return STRICT JSON only (no markdown fences):
+{
+  "localProblem": "max 12 words",
+  "problemContext": "max 2 short sentences",
+  "shortTerm": ["exactly 3 short actions for this month"],
+  "longTerm": ["exactly 3 short actions for 6-24 months"],
+  "productIdeas": [{"name":"short","why":"max 14 words"}],
+  "foundations": [{"name":"short","why":"max 16 words","url":"https://..."}],
+  "newsSnippets": [{"title":"short","url":"https://..."}],
+  "disclaimer": "one sentence reminding to verify local conditions"
+}
+
+Rules:
+- Use clear US English only.
+- Keep advice practical and local.
+- Use web search when useful for recency.
+- Prefer trustworthy organizations and real https links.
+- No extra keys, no prose outside JSON.`;
+
+  const params = new URLSearchParams();
+  params.set("content", prompt);
+  params.set("stream", "false");
+  params.set("memory", "Auto");
+  params.set("web_search", "Auto");
+
+  try {
+    const response = await fetch(`${BACKBOARD_BASE_URL}/threads/${threadId}/messages`, {
+      method: "POST",
+      headers: buildBackboardHeaders(apiKey, "application/x-www-form-urlencoded"),
+      body: params.toString(),
+    });
+    if (!response.ok) return null;
+    const raw = await response.json();
+    const text = extractBackboardText(raw);
+    if (!text) return null;
+    const parsed = parseJsonFromText(text);
+    if (!parsed) return null;
+    const coerced = coercePayload(parsed, "backboard", threadId);
+    if (!coerced) return null;
+    if ((!coerced.newsSnippets || coerced.newsSnippets.length === 0) && text.includes("http")) {
+      const newsSnippets = extractBackboardNewsSnippets(text);
+      if (newsSnippets.length > 0) return { ...coerced, newsSnippets };
+    }
+    return coerced;
+  } catch {
+    return null;
+  }
 }
 
 async function tryOpenAiResearch(body: Body): Promise<PlaceResearchPayload | null> {
@@ -351,6 +509,9 @@ function placeResearchUsesGeminiFallback(): boolean {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as Body;
+
+  const backboard = await tryBackboardResearch(body);
+  if (backboard) return NextResponse.json(backboard);
 
   const openai = await tryOpenAiResearch(body);
   if (openai) return NextResponse.json(openai);

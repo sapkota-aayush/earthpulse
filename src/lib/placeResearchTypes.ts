@@ -4,7 +4,7 @@ export type PlaceResearchNewsSnippet = { title: string; url: string };
 
 /** Short awareness brief: local problem + short/long steps + buys + giving. */
 export type PlaceResearchPayload = {
-  source: "openai" | "gemini" | "fallback";
+  source: "backboard" | "openai" | "gemini" | "fallback";
   localProblem: string;
   problemContext: string;
   shortTerm: string[];
@@ -12,6 +12,8 @@ export type PlaceResearchPayload = {
   productIdeas: PlaceResearchProduct[];
   foundations: PlaceResearchFoundation[];
   disclaimer: string;
+  /** Backboard thread ID for continuity across requests in the same user session. */
+  contextThreadId?: string;
   /** Present when OpenAI web search returned citations (max ~4). */
   newsSnippets?: PlaceResearchNewsSnippet[];
 };

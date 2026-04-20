@@ -7,6 +7,13 @@ export type AccentId = "sky" | "emerald" | "violet" | "amber" | "rose";
 
 const STORAGE_THEME = "earthpulse-theme";
 const STORAGE_ACCENT = "earthpulse-accent";
+const ACCENT_RGB: Record<AccentId, string> = {
+  sky: "56, 189, 248",
+  emerald: "52, 211, 153",
+  violet: "167, 139, 250",
+  amber: "251, 191, 36",
+  rose: "251, 113, 133",
+};
 
 type Ctx = {
   theme: ThemeMode;
@@ -22,6 +29,8 @@ function applyDom(theme: ThemeMode, accent: AccentId) {
   const root = document.documentElement;
   root.dataset.theme = theme;
   root.dataset.accent = accent;
+  // Keep a canonical accent triplet to avoid malformed CSS var values in runtime reads.
+  root.style.setProperty("--accent-rgb", ACCENT_RGB[accent]);
   try {
     localStorage.setItem(STORAGE_THEME, theme);
     localStorage.setItem(STORAGE_ACCENT, accent);

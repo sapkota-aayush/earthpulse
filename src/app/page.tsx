@@ -7,7 +7,6 @@ import { motion, useInView } from "framer-motion";
 import StarField from "@/components/StarField";
 import LocationSearch from "@/components/LocationSearch";
 import PlanetStats from "@/components/PlanetStats";
-import ScanOverlay, { SCAN_OVERLAY_SEQUENCE_MS } from "@/components/ScanOverlay";
 import { DEAD_ZONES, type DeadZone } from "@/lib/deadZones";
 import type { GlobeHandle } from "@/components/GlobeView";
 
@@ -25,20 +24,11 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
-function satImageUrl(lat: number, lon: number) {
-  return `/api/satellite?lat=${lat}&lon=${lon}`;
-}
-
 export default function Home() {
   const router = useRouter();
-  const [scanning, setScanning] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<{ name: string; lat: number; lon: number; postalCode?: string } | null>(null);
-  const [globeDraft, setGlobeDraft] = useState<{ lat: number; lon: number; label: string; loading: boolean } | null>(null);
   const globeRef = useRef<GlobeHandle>(null);
   const heroRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const pickAbortRef = useRef<AbortController | null>(null);
-  const pickDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** While flying to a dead zone, hide all other red markers until navigation completes. */
   const [deadZoneFocusId, setDeadZoneFocusId] = useState<string | null>(null);
@@ -55,51 +45,16 @@ export default function Home() {
     );
   }, [router]);
 
-  const reverseGeocode = useCallback(async (lat: number, lon: number, signal?: AbortSignal) => {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12&addressdetails=1`,
-      { headers: { "Accept-Language": "en" }, signal }
-    );
-    if (!res.ok) throw new Error("reverse failed");
-    const j = await res.json();
-    return (j.display_name as string) || `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
-  }, []);
-
-  const handleGlobePick = useCallback((lat: number, lng: number) => {
-    setGlobeDraft({ lat, lon: lng, label: "Resolving place name…", loading: true });
-    if (pickDebounceRef.current) clearTimeout(pickDebounceRef.current);
-    pickDebounceRef.current = setTimeout(() => {
-      pickAbortRef.current?.abort();
-      pickAbortRef.current = new AbortController();
-      const { signal } = pickAbortRef.current;
-      reverseGeocode(lat, lng, signal)
-        .then((label) => {
-          if (signal.aborted) return;
-          setGlobeDraft({ lat, lon: lng, label, loading: false });
-        })
-        .catch(() => {
-          if (signal.aborted) return;
-          setGlobeDraft({ lat, lon: lng, label: `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`, loading: false });
-        });
-    }, 100);
-  }, [reverseGeocode]);
-
   const handleSelect = useCallback((place: { name: string; lat: number; lon: number; postalCode?: string }) => {
-    setSelectedPlace(place);
-    setScanning(false);
-
     const runFlyAndNavigate = () => {
       globeRef.current?.flyTo(place.lat, place.lon, () => {
-        setScanning(true);
-        window.setTimeout(() => {
-          const params = new URLSearchParams({
-            name: place.name,
-            lat: place.lat.toString(),
-            lon: place.lon.toString(),
-            ...(place.postalCode ? { postal: place.postalCode } : {}),
-          });
-          router.push(`/analyze?${params.toString()}`);
-        }, SCAN_OVERLAY_SEQUENCE_MS + 1600);
+        const params = new URLSearchParams({
+          name: place.name,
+          lat: place.lat.toString(),
+          lon: place.lon.toString(),
+          ...(place.postalCode ? { postal: place.postalCode } : {}),
+        });
+        router.push(`/analyze?${params.toString()}`);
       });
     };
 
@@ -121,21 +76,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen theme-bg theme-fg">
-      <ScanOverlay
-        visible={scanning}
-        lat={selectedPlace?.lat ?? 0}
-        lon={selectedPlace?.lon ?? 0}
-        locationName={selectedPlace?.name ?? ""}
-        satImage={selectedPlace ? satImageUrl(selectedPlace.lat, selectedPlace.lon) : null}
-      />
-
       <section ref={heroRef} className="relative h-screen flex flex-col overflow-hidden">
         <StarField />
         <div className="absolute inset-0 z-[1] hero-ambient" />
         <div className="absolute inset-0 z-0">
           <GlobeView
             ref={globeRef}
-            onPick={handleGlobePick}
             deadZones={DEAD_ZONES}
             onDeadZoneClick={handleDeadZoneClick}
             deadZoneFocusId={deadZoneFocusId}
@@ -151,7 +97,7 @@ export default function Home() {
               <span className="text-[10px] sm:text-xs tracking-[0.28em] uppercase font-mono text-accent-soft">EarthPulse</span>
             </div>
             <span className="text-theme-muted text-[11px] sm:text-xs font-mono max-w-[16rem] sm:max-w-xs leading-relaxed">
-              Tap the globe or search — satellite lead-in, then your fork.
+              Pick a dead zone or search a place to start your climate fork.
             </span>
           </div>
           <button
@@ -163,47 +109,6 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="absolute z-30 bottom-8 sm:bottom-12 left-4 sm:left-10 flex flex-col gap-3 max-w-sm w-[min(20rem,calc(100vw-2rem))] pointer-events-auto">
-          {globeDraft && (
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.85 }}
-            >
-              <div className="glass rounded-2xl border border-[rgba(var(--accent-rgb),0.22)] px-4 py-3 flex flex-col gap-3">
-                <div className="min-w-0">
-                  <p className="text-accent-soft text-[10px] font-mono tracking-widest uppercase mb-1">Globe pick</p>
-                  <p className="text-theme-primary/90 text-sm truncate">{globeDraft.loading ? "Locking coordinates…" : globeDraft.label}</p>
-                  <p className="text-theme-faint text-[11px] font-mono mt-0.5">
-                    {globeDraft.lat.toFixed(4)}°, {globeDraft.lon.toFixed(4)}° · drag · wheel zoom
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setGlobeDraft(null)}
-                    className="px-3 py-2 rounded-full border border-theme-border text-theme-muted text-xs font-mono hover:border-[rgba(var(--accent-rgb),0.35)] hover:text-theme-primary transition-colors"
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    type="button"
-                    disabled={globeDraft.loading}
-                    onClick={() => {
-                      const p = globeDraft;
-                      setGlobeDraft(null);
-                      handleSelect({ name: p.label, lat: p.lat, lon: p.lon });
-                    }}
-                    className="px-3 py-2 rounded-full bg-accent-muted border border-[rgba(var(--accent-rgb),0.45)] text-accent text-xs font-mono hover:brightness-110 disabled:opacity-40 transition-colors"
-                  >
-                    Scan this point
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </div>
       </section>
 
       <PlanetStats />

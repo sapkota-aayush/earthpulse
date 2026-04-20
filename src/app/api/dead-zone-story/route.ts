@@ -21,10 +21,12 @@ type StoryResponse = {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-latest";
 
 // Support both the project-standard key name and the one specified in the task.
 const GEMINI_API_KEY =
   process.env.GOOGLE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 // ── Prompt builder ───────────────────────────────────────────────────────────
 
@@ -118,21 +120,97 @@ async function fetchStoryFromGemini(z: DeadZoneBody): Promise<string> {
     .trim();
 }
 
+function sanitizeModelText(text: string): string {
+  return text
+    .replace(/^#{1,6}\s.*$/gm, "") // headings
+    .replace(/\*\*(.*?)\*\*/g, "$1") // bold
+    .replace(/\*(.*?)\*/g, "$1") // italic
+    .replace(/`{1,3}[^`]*`{1,3}/g, "") // inline / block code
+    .trim();
+}
+
+async function fetchStoryFromAnthropic(z: DeadZoneBody): Promise<string> {
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("Anthropic API key missing");
+  }
+
+  const prompt = buildPrompt(z);
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 700,
+      temperature: 0.85,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => response.statusText);
+    throw new Error(`Anthropic API error ${response.status}: ${errText}`);
+  }
+
+  const raw = (await response.json()) as {
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  const text = raw?.content?.find((p) => p?.type === "text")?.text;
+  if (!text || !text.trim()) {
+    throw new Error("Anthropic returned an empty response");
+  }
+
+  return sanitizeModelText(text);
+}
+
+function shouldUseAnthropicFallback(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return (
+    msg.includes("Gemini API error 429") ||
+    msg.includes("RESOURCE_EXHAUSTED") ||
+    msg.includes("rate limit") ||
+    msg.includes("quota")
+  );
+}
+
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse<StoryResponse>> {
   const body = (await req.json()) as DeadZoneBody;
 
-  if (!GEMINI_API_KEY) {
+  if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
     return NextResponse.json({ story: buildFallbackStory(body) });
   }
 
-  try {
-    const story = await fetchStoryFromGemini(body);
-    return NextResponse.json({ story });
-  } catch (err) {
-    console.error("[dead-zone-story] Gemini call failed:", err);
-    // Gracefully fall back rather than sending a 500 to the client.
-    return NextResponse.json({ story: buildFallbackStory(body) });
+  if (GEMINI_API_KEY) {
+    try {
+      const story = await fetchStoryFromGemini(body);
+      return NextResponse.json({ story });
+    } catch (err) {
+      console.error("[dead-zone-story] Gemini call failed:", err);
+      if (ANTHROPIC_API_KEY && shouldUseAnthropicFallback(err)) {
+        try {
+          const story = await fetchStoryFromAnthropic(body);
+          return NextResponse.json({ story });
+        } catch (anthropicErr) {
+          console.error("[dead-zone-story] Anthropic fallback failed:", anthropicErr);
+        }
+      }
+    }
   }
+
+  if (ANTHROPIC_API_KEY) {
+    try {
+      const story = await fetchStoryFromAnthropic(body);
+      return NextResponse.json({ story });
+    } catch (err) {
+      console.error("[dead-zone-story] Anthropic call failed:", err);
+    }
+  }
+
+  // Gracefully fall back rather than sending a 500 to the client.
+  return NextResponse.json({ story: buildFallbackStory(body) });
 }

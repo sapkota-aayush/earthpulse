@@ -31,6 +31,7 @@ export default function PlaceResearchPanel({ metrics }: { metrics: Metrics }) {
   const stepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { name, lat, lon, score, aqiLabel, greenCover, population, concretePercent } = metrics;
+  const threadStorageKey = `ep:bb:thread:${name.trim().toLowerCase()}:${lat.toFixed(3)}:${lon.toFixed(3)}`;
 
   useEffect(() => {
     if (!loading) {
@@ -65,11 +66,16 @@ export default function PlaceResearchPanel({ metrics }: { metrics: Metrics }) {
         greenCover,
         population,
         concretePercent,
+        contextThreadId: typeof window !== "undefined" ? window.localStorage.getItem(threadStorageKey) : null,
       }),
     })
       .then((r) => r.json())
       .then((j: PlaceResearchPayload) => {
-        if (!cancelled) setPayload(j);
+        if (cancelled) return;
+        setPayload(j);
+        if (j.contextThreadId && typeof window !== "undefined") {
+          window.localStorage.setItem(threadStorageKey, j.contextThreadId);
+        }
       })
       .catch(() => {
         if (!cancelled) setPayload(null);
@@ -80,7 +86,7 @@ export default function PlaceResearchPanel({ metrics }: { metrics: Metrics }) {
     return () => {
       cancelled = true;
     };
-  }, [name, lat, lon, score, aqiLabel, greenCover, population, concretePercent]);
+  }, [name, lat, lon, score, aqiLabel, greenCover, population, concretePercent, threadStorageKey]);
 
   return (
     <motion.section
@@ -115,7 +121,13 @@ export default function PlaceResearchPanel({ metrics }: { metrics: Metrics }) {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-[10px] font-mono uppercase tracking-widest text-accent-soft px-2 py-0.5 rounded-full border border-theme-border">
-                {payload.source === "openai" ? "Web + OpenAI" : payload.source === "gemini" ? "Gemini" : "Offline brief"}
+                {payload.source === "backboard"
+                  ? "Backboard Memory"
+                  : payload.source === "openai"
+                    ? "Web + OpenAI"
+                    : payload.source === "gemini"
+                      ? "Gemini"
+                      : "Offline brief"}
               </span>
             </div>
             <h3 className="text-base font-semibold text-theme-primary leading-snug">{payload.localProblem}</h3>

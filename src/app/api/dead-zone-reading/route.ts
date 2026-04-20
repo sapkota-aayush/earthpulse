@@ -12,13 +12,15 @@ type ReadingBody = DeadZoneReadingContext & {
 };
 
 type ReadingResponse = {
-  source: "gemini" | "offline";
+  source: "gemini" | "anthropic" | "offline";
   links: RelatedArticle[];
 };
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
 const GEMINI_API_KEY =
   process.env.GOOGLE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-latest";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 function hostnameSource(uri: string): string {
   try {
@@ -89,6 +91,94 @@ function mergeLinks(grounded: RelatedArticle[], offline: RelatedArticle[]): Rela
   return out;
 }
 
+function parseJsonFromText(text: string): Record<string, unknown> | null {
+  const t = text.trim();
+  const fence = /^```(?:json)?\s*([\s\S]*?)```$/m.exec(t);
+  const inner = fence ? fence[1].trim() : t;
+  try {
+    return JSON.parse(inner) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function buildAnthropicPrompt(z: ReadingBody): string {
+  return `You are helping readers find trustworthy follow-up links for an environmental incident.
+
+Return strict JSON only:
+{
+  "links": [
+    { "title": "string", "url": "https://...", "source": "domain or publisher name" }
+  ]
+}
+
+Rules:
+- Return 3 to 6 links only.
+- Use only https URLs.
+- Prefer reputable sources (Reuters, AP, BBC, major newspapers, UN/WHO/NASA, encyclopedias).
+- If unsure, return fewer links rather than guessing.
+
+Incident:
+- Name: ${z.name}
+- Country / region: ${z.country}
+- Category: ${z.category ?? "unknown"}
+- Anchor year: ${z.yearOfDamage}
+- Culprit/mechanism line: ${z.culprit ?? "n/a"}
+- Tagline: ${z.tagline ?? "n/a"}`;
+}
+
+async function linksFromAnthropic(z: ReadingBody): Promise<RelatedArticle[]> {
+  if (!ANTHROPIC_API_KEY) return [];
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 900,
+      temperature: 0.2,
+      messages: [{ role: "user", content: buildAnthropicPrompt(z) }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => response.statusText);
+    throw new Error(`Anthropic API error ${response.status}: ${errText}`);
+  }
+
+  const raw = (await response.json()) as {
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  const text = raw?.content?.find((c) => c?.type === "text")?.text;
+  if (!text) return [];
+  const parsed = parseJsonFromText(text);
+  if (!parsed) return [];
+
+  const list = Array.isArray(parsed.links) ? parsed.links : [];
+  const seen = new Set<string>();
+  const out: RelatedArticle[] = [];
+
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as { title?: unknown; url?: unknown; source?: unknown };
+    const url = String(row.url ?? "").trim();
+    if (!url.startsWith("https://") || seen.has(url)) continue;
+    seen.add(url);
+    out.push({
+      title: String(row.title ?? hostnameSource(url)).slice(0, 220) || hostnameSource(url),
+      url,
+      source: String(row.source ?? hostnameSource(url)).slice(0, 120) || hostnameSource(url),
+    });
+    if (out.length >= 8) break;
+  }
+
+  return out;
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse<ReadingResponse>> {
   const body = (await req.json()) as ReadingBody;
   const ctx: DeadZoneReadingContext = {
@@ -133,6 +223,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<ReadingRespon
     }
 
     if (!response?.ok) {
+      if (ANTHROPIC_API_KEY) {
+        try {
+          const anthropicLinks = await linksFromAnthropic(body);
+          if (anthropicLinks.length > 0) {
+            return NextResponse.json({
+              source: "anthropic",
+              links: mergeLinks(anthropicLinks, offline),
+            });
+          }
+        } catch (anthropicErr) {
+          console.error("[dead-zone-reading] Anthropic fallback failed:", anthropicErr);
+        }
+      }
       return NextResponse.json({ source: "offline", links: offline });
     }
 
@@ -146,9 +249,35 @@ export async function POST(req: NextRequest): Promise<NextResponse<ReadingRespon
       });
     }
 
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const anthropicLinks = await linksFromAnthropic(body);
+        if (anthropicLinks.length > 0) {
+          return NextResponse.json({
+            source: "anthropic",
+            links: mergeLinks(anthropicLinks, offline),
+          });
+        }
+      } catch (anthropicErr) {
+        console.error("[dead-zone-reading] Anthropic fallback failed:", anthropicErr);
+      }
+    }
     return NextResponse.json({ source: "offline", links: offline });
   } catch (e) {
     console.error("[dead-zone-reading]", e);
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const anthropicLinks = await linksFromAnthropic(body);
+        if (anthropicLinks.length > 0) {
+          return NextResponse.json({
+            source: "anthropic",
+            links: mergeLinks(anthropicLinks, offline),
+          });
+        }
+      } catch (anthropicErr) {
+        console.error("[dead-zone-reading] Anthropic fallback failed:", anthropicErr);
+      }
+    }
     return NextResponse.json({ source: "offline", links: offline });
   }
 }

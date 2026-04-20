@@ -49,12 +49,11 @@ function SeverityBadge({ level }: { level: 1 | 2 | 3 }) {
   return (
     <span
       className="inline-flex items-center gap-2 font-mono font-bold text-[12px]"
-      style={{ color: c }}
+      style={{ color: c, whiteSpace: "nowrap", flexWrap: "nowrap", lineHeight: 1 }}
     >
       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{
-        backgroundImage: `radial-gradient(${c}33 1px, transparent 1px)`,
-        backgroundSize: "6px 6px",
-        border: `1px solid ${c}44`,
+        background: `${c}14`,
+        border: `1px solid ${c}55`,
       }}>
         {([1, 2, 3] as const).map((i) => (
           <span
@@ -113,8 +112,6 @@ function StatCell({ label, value }: { label: string; value: React.ReactNode }) {
           fontWeight: 600,
           color: "rgba(255,255,255,0.85)",
           whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
         }}
       >
         {value}
@@ -290,7 +287,7 @@ export default function DeadZonePanel({ zone, onClose, story, storyLoading }: Pr
                 border: "1px solid rgba(255,255,255,0.07)",
                 background: "rgba(255,255,255,0.03)",
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
                 gap: "12px 10px",
               }}
             >

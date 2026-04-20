@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
+import DeadZoneBackboardBrief from "@/components/DeadZoneBackboardBrief";
 import type { DeadZone } from "@/lib/deadZoneTypes";
 import type { RelatedArticle } from "@/lib/deadZoneRelatedReading";
 
@@ -41,13 +42,7 @@ function SeverityMeter({ level }: { level: 1 | 2 | 3 }) {
   const tier: Record<1 | 2 | 3, string> = { 1: "Elevated", 2: "High", 3: "Critical" };
   return (
     <div
-      className="mt-2 rounded-lg px-3 py-3 border border-theme-border"
-      style={{
-        backgroundColor: "color-mix(in oklab, var(--surface-0) 82%, transparent)",
-        backgroundImage:
-          "radial-gradient(rgba(var(--accent-rgb),0.14) 1.2px, transparent 1.2px)",
-        backgroundSize: "9px 9px",
-      }}
+      className="mt-2 rounded-lg px-3 py-3 border border-theme-border bg-[color-mix(in_oklab,var(--surface-1)_78%,transparent)]"
     >
       <div className="flex items-center gap-2" role="img" aria-label={`Impact level ${level} of 3`}>
         {([1, 2, 3] as const).map((i) => (
@@ -116,7 +111,10 @@ function ExternalLinkIcon({ className }: { className?: string }) {
 export default function DeadZoneDetailClient({ zone }: { zone: DeadZone }) {
   const [story, setStory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reading, setReading] = useState<{ source: "gemini" | "offline"; links: RelatedArticle[] } | null>(null);
+  const [reading, setReading] = useState<{
+    source: "gemini" | "anthropic" | "offline";
+    links: RelatedArticle[];
+  } | null>(null);
   const [readingLoading, setReadingLoading] = useState(true);
   const cat = CATEGORY_COLOR[zone.category];
 
@@ -175,10 +173,8 @@ export default function DeadZoneDetailClient({ zone }: { zone: DeadZone }) {
       .then((j: { source?: string; links?: RelatedArticle[] }) => {
         if (cancelled) return;
         if (j?.links?.length) {
-          setReading({
-            source: j.source === "gemini" ? "gemini" : "offline",
-            links: j.links,
-          });
+          const src = j.source === "gemini" ? "gemini" : j.source === "anthropic" ? "anthropic" : "offline";
+          setReading({ source: src, links: j.links });
         } else {
           setReading(null);
         }
@@ -301,6 +297,8 @@ export default function DeadZoneDetailClient({ zone }: { zone: DeadZone }) {
           </dl>
         </section>
 
+        <DeadZoneBackboardBrief zone={zone} />
+
         <section className="mt-10 rounded-2xl border border-theme-border bg-[color-mix(in_oklab,var(--surface-1)_85%,transparent)] px-5 py-6 sm:px-7 sm:py-8">
           <h2 className="text-[10px] font-mono uppercase tracking-[0.22em] text-accent-soft mb-5 pb-3 border-b border-theme-border">
             The story
@@ -333,6 +331,11 @@ export default function DeadZoneDetailClient({ zone }: { zone: DeadZone }) {
               {!readingLoading && reading?.source === "gemini" && (
                 <span className="text-[9px] font-mono uppercase tracking-wider text-theme-faint px-2 py-1 rounded-md border border-theme-border bg-[color-mix(in_oklab,var(--surface-0)_70%,transparent)]">
                   Gemini + Google Search
+                </span>
+              )}
+              {!readingLoading && reading?.source === "anthropic" && (
+                <span className="text-[9px] font-mono uppercase tracking-wider text-theme-faint px-2 py-1 rounded-md border border-theme-border bg-[color-mix(in_oklab,var(--surface-0)_70%,transparent)]">
+                  Claude links
                 </span>
               )}
               {!readingLoading && reading?.source === "offline" && (
