@@ -1,4 +1,5 @@
 "use client";
+// Embed-style map links for the analyze view (external tiles / earth apps).
 
 type Props = {
   lat: number;

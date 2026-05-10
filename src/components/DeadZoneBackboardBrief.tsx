@@ -1,4 +1,5 @@
 "use client";
+// Optional richer brief block for a dead zone (fetches when keys allow).
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";

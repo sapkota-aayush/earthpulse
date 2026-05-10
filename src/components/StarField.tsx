@@ -1,4 +1,5 @@
 "use client";
+// Canvas starfield synced to theme (dark/light) behind the landing hero.
 
 import { useEffect, useRef } from "react";
 import { useTheme } from "@/theme/ThemeContext";

@@ -1,4 +1,5 @@
 "use client";
+// Syncs dark/light + accent palettes to CSS variables and localStorage for repeat visits.
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 

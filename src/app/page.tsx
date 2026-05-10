@@ -1,4 +1,5 @@
 "use client";
+// Home: hero globe, dead-zone fly-to, and city search routing to /analyze or /deadzone.
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";

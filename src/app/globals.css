@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* EarthPulse design tokens: surfaces, accents, and shared utility classes for pages. */
+
 * {
   box-sizing: border-box;
 }

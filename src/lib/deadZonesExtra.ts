@@ -1,3 +1,4 @@
+// Extra pinned sites merged into DEAD_ZONES export (extended imagery / research).
 import type { DeadZone } from "./deadZoneTypes";
 
 /** NASA Terra MODIS — eastern China plain, 3 vs 14 Jan 2013 (paired haze/clear). */

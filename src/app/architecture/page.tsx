@@ -1,3 +1,4 @@
+// Static marketing / submission diagram: logos embedded via simple-icons package.
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";

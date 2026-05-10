@@ -1,5 +1,6 @@
 /**
  * IBM watsonx.ai — primary LLM path for dead-zone stories when env is set; Gemini/Anthropic used after.
+ * Wrapped here so IAM token exchange stays server-only.
  */
 
 const IAM_TOKEN_URL = "https://iam.cloud.ibm.com/identity/token";

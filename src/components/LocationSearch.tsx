@@ -1,4 +1,5 @@
 "use client";
+// Nominatim-backed search; emits lat/lon/name for fly-to and /analyze navigation.
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";

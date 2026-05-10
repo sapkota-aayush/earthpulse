@@ -1,4 +1,5 @@
 "use client";
+// WebGL globe: globe.gl scene, pins, rings, tweened fly-to callbacks for routing.
 
 import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import type { DeadZone } from "@/lib/deadZones";

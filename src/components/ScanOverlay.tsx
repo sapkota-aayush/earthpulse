@@ -1,4 +1,5 @@
 "use client";
+// Full-screen scanning / reveal animation used in analyze journey moments.
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";

@@ -1,4 +1,5 @@
 "use client";
+// Client detail page: slider, story fetch, reading list, impact copy.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

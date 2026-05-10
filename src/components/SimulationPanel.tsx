@@ -1,4 +1,5 @@
 "use client";
+// Stress report cards: score, AQI, metrics, and CTA actions from /api/analyze.
 
 import { useState } from "react";
 import { motion } from "framer-motion";

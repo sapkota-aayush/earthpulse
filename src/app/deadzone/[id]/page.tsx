@@ -1,3 +1,4 @@
+// Server entry: resolve static dead-zone by id; 404 if unknown.
 import { notFound } from "next/navigation";
 import { getDeadZoneById } from "@/lib/deadZones";
 import DeadZoneDetailClient from "./DeadZoneDetailClient";

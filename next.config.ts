@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+// Allow next/image (or fetches) from map tile / basemap hosts used in the app.
 
 const nextConfig: NextConfig = {
   images: {

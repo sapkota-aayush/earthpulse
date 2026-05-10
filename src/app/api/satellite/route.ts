@@ -1,3 +1,4 @@
+// Proxy/map still helper: builds a bounded lat/lon view for previews.
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {

@@ -1,4 +1,5 @@
 "use client";
+// Fork UI for “what-if” lifestyle sliders feeding the plan API on /analyze.
 
 import { motion } from "framer-motion";
 

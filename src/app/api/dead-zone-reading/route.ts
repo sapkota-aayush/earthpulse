@@ -1,3 +1,4 @@
+// “Read further” links for a dead zone: model + curated merge with safe citations.
 import { NextRequest, NextResponse } from "next/server";
 import {
   getRelatedReadingForDeadZone,

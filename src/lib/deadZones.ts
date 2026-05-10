@@ -1,3 +1,4 @@
+// Canonical list of pinned “dead zones”: coords, imagery URLs, narrative facts (shipped static).
 import type { DeadZone } from "./deadZoneTypes";
 import { DEAD_ZONES_EXTRA } from "./deadZonesExtra";
 import { DEAD_ZONES_CLIMATE_WATCH } from "./deadZonesClimateWatch";

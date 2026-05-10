@@ -1,3 +1,4 @@
+// Root shell: fonts, global CSS, theme bootstrap before paint (localStorage keys).
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";

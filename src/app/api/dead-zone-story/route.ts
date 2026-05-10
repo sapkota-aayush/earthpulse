@@ -1,3 +1,4 @@
+// Long-form prose for a zone: IBM watsonx first when configured; then Gemini / Anthropic; else static fallback.
 import { NextRequest, NextResponse } from "next/server";
 import {
   getWatsonxEnvForStory,

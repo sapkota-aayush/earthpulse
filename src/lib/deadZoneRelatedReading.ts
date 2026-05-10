@@ -1,3 +1,4 @@
+// Curated “read further” links surfaced on dead-zone detail (static + API-assisted).
 import type { DeadZone } from "./deadZoneTypes";
 
 export interface RelatedArticle {

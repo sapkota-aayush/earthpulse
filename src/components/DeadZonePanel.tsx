@@ -1,4 +1,5 @@
 "use client";
+// Detail drawer: before/after slider, facts, narrative loading, related reading hooks.
 
 import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";

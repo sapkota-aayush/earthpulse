@@ -1,4 +1,5 @@
 "use client";
+// Draggable comparison mask between two satellite-era stills on dead-zone pages.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";

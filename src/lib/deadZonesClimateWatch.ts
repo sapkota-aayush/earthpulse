@@ -1,3 +1,4 @@
+// Climate-watch exemplar entries (paired NASA imagery reused for teaching pins).
 import type { DeadZone } from "./deadZoneTypes";
 
 /** NASA Earth Observatory / Science — trusted pairs reused as regional climate exemplars (same sensors, different map pins). */

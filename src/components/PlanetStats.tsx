@@ -1,4 +1,5 @@
 "use client";
+// Lightweight animated headline stats for the landing ribbon (illustrative pacing).
 
 import { useEffect, useState } from "react";
 

@@ -1,3 +1,4 @@
+// Place briefs: prefers Backboard/OpenAI chains; fills PlaceResearchPayload shape.
 import { NextRequest, NextResponse } from "next/server";
 import type { PlaceResearchPayload } from "@/lib/placeResearchTypes";
 

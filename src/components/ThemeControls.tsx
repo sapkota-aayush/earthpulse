@@ -1,4 +1,5 @@
 "use client";
+// Floating dark/light toggle + accent picker (reads/writes ThemeContext + localStorage).
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";

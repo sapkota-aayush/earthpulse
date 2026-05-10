@@ -1,4 +1,5 @@
 "use client";
+// Analyze page: structured place research JSON from /api/place-research.
 
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";

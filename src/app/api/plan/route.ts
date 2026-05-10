@@ -1,3 +1,4 @@
+// 7-day style plan JSON from Gemini (or offline) given analyze context + fork sliders.
 import { NextRequest, NextResponse } from "next/server";
 
 type PlanRequest = {

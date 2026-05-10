@@ -1,3 +1,4 @@
+// Shape of each globe pin detail record (typed for API payloads and GlobeView).
 export type DeadZoneCategory =
   | "nuclear"
   | "industrial"

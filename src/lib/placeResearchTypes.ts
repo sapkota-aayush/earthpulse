@@ -1,3 +1,4 @@
+// JSON shapes returned from /api/place-research for the analyze-side panel.
 export type PlaceResearchProduct = { name: string; why: string };
 export type PlaceResearchFoundation = { name: string; why: string; url: string };
 export type PlaceResearchNewsSnippet = { title: string; url: string };

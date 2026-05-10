@@ -1,3 +1,4 @@
+// Compose local stress report: Open-Meteo + optional OpenWeather AQI + UI payload.
 import { NextRequest, NextResponse } from "next/server";
 
 interface AQIData {
