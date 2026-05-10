@@ -1,4 +1,5 @@
 {
+  // Next.js App Router defaults + @/* path alias to ./src/*
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
