@@ -25,7 +25,7 @@ export default function ThemeControls() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2">
+    <div className="fixed bottom-5 right-5 z-[100] flex max-w-[min(100vw-1.5rem,420px)] flex-col items-end gap-2">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -72,7 +72,14 @@ export default function ThemeControls() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
+        <p
+          className="order-last w-full text-right text-[10px] font-medium tracking-wide text-theme-muted sm:order-first sm:mr-auto sm:w-auto sm:text-left"
+          title="Build for the Planet hackathon"
+        >
+          <span className="text-theme-primary">EarthPulse</span>
+          <span className="text-theme-muted"> · Build for the Planet</span>
+        </p>
         <div className="glass flex rounded-full border border-theme-border p-0.5 shadow-lg">
           <button
             type="button"

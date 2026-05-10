@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  getWatsonxEnvForStory,
+  isWatsonxConfigured,
+  watsonxTextGeneration,
+} from "@/lib/watsonx";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +81,31 @@ function buildFallbackStory(z: DeadZoneBody): string {
   const p3 = `Satellite imagery of ${z.name} today shows a landscape in arrested decay. The markers of former life — tree canopy, water clarity, soil structure, species range — are diminished or absent. Some boundary zones show faint signals of recovery; most do not. What remains is a record of what ${z.country}'s institutions chose to permit, written into the earth at a scale that cannot be redacted.`;
 
   return [p1, p2, p3].join("\n\n");
+}
+
+// ── IBM watsonx.ai (primary path for dead-zone narratives when configured) ───
+
+async function fetchStoryFromWatsonx(z: DeadZoneBody): Promise<string> {
+  const env = getWatsonxEnvForStory();
+  if (!env) {
+    throw new Error("watsonx not configured");
+  }
+
+  const prompt = buildPrompt(z);
+  const text = await watsonxTextGeneration({
+    prompt,
+    apiKey: env.apiKey,
+    projectId: env.projectId,
+    baseUrl: env.baseUrl,
+    modelId: env.modelId,
+    maxNewTokens: 600,
+    temperature: 0.85,
+    ...(process.env.WATSONX_API_VERSION
+      ? { apiVersion: process.env.WATSONX_API_VERSION }
+      : {}),
+  });
+
+  return sanitizeModelText(text);
 }
 
 // ── Gemini call ──────────────────────────────────────────────────────────────
@@ -176,13 +206,22 @@ function shouldUseAnthropicFallback(err: unknown): boolean {
   );
 }
 
-// ── Route handler ────────────────────────────────────────────────────────────
+// ── Route handler: IBM watsonx first, then Gemini / Anthropic, then offline copy ──
 
 export async function POST(req: NextRequest): Promise<NextResponse<StoryResponse>> {
   const body = (await req.json()) as DeadZoneBody;
 
-  if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
+  if (!isWatsonxConfigured() && !GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
     return NextResponse.json({ story: buildFallbackStory(body) });
+  }
+
+  if (isWatsonxConfigured()) {
+    try {
+      const story = await fetchStoryFromWatsonx(body);
+      return NextResponse.json({ story });
+    } catch (err) {
+      console.error("[dead-zone-story] IBM watsonx failed:", err);
+    }
   }
 
   if (GEMINI_API_KEY) {
@@ -211,6 +250,5 @@ export async function POST(req: NextRequest): Promise<NextResponse<StoryResponse
     }
   }
 
-  // Gracefully fall back rather than sending a 500 to the client.
   return NextResponse.json({ story: buildFallbackStory(body) });
 }

@@ -20,6 +20,20 @@ These are real places. Real damage. Done by climate change, global warming, war,
 
 ---
 
+### IBM technology
+
+Narratives use **IBM watsonx.ai**.
+
+---
+
+## System architecture
+
+![EarthPulse system architecture diagram](images/earthpulsesystemdiagram.png)
+
+The same diagram is available as a live page at **`/architecture`** on your deployment (e.g. `https://earthpulse-three.vercel.app/architecture`) if you need an updated export.
+
+---
+
 ## Running it
 
 ```bash
@@ -36,16 +50,18 @@ Open `http://localhost:3000`.
 Create `.env.local` in the project root. The app runs without any keys — keys unlock richer data, narratives, and research.
 
 ```bash
-GOOGLE_GEMINI_API_KEY=   # dead-zone stories, action plans, read-further links
-OPENWEATHER_API_KEY=     # live AQI in the stress report
-OPENAI_API_KEY=          # place research with web search
+IBM_CLOUD_API_KEY=       # IBM watsonx (with WATSONX_PROJECT_ID)
+WATSONX_PROJECT_ID=
+GOOGLE_GEMINI_API_KEY=   # other AI routes, optional
+OPENWEATHER_API_KEY=
+OPENAI_API_KEY=
 ```
 
 ---
 
 ## Stack
 
-Next.js · TypeScript · Tailwind CSS · Framer Motion · globe.gl · three.js · Google Gemini · Open-Meteo · OpenWeather · Nominatim
+Next.js · TypeScript · Tailwind CSS · Framer Motion · globe.gl · three.js · **IBM watsonx.ai** · Open-Meteo · OpenWeather · Nominatim
 
 ---
 
