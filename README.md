@@ -1,5 +1,13 @@
 # EarthPulse
 
+## System architecture
+
+![EarthPulse system architecture diagram](images/earthpulsesystemdiagram.png)
+
+The same diagram also renders as a page at **`/architecture`** (e.g. [earthpulse-three.vercel.app/architecture](https://earthpulse-three.vercel.app/architecture)).
+
+---
+
 Somewhere on this planet, a forest that stood for a thousand years is gone. A sea that fed millions is dead. A city is breathing air that no government dashboard will tell you about.
 
 ### The story
@@ -23,14 +31,6 @@ These are real places. Real damage. Done by climate change, global warming, war,
 ### IBM technology
 
 Narratives use **IBM watsonx.ai**.
-
----
-
-## System architecture
-
-![EarthPulse system architecture diagram](images/earthpulsesystemdiagram.png)
-
-The same diagram is available as a live page at **`/architecture`** on your deployment (e.g. `https://earthpulse-three.vercel.app/architecture`) if you need an updated export.
 
 ---
 
